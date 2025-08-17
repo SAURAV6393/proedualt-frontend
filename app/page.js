@@ -11,6 +11,9 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 );
 
+// Define the live backend URL
+const BACKEND_URL = "https://proedualt-backend63.onrender.com";
+
 export default function HomePage() {
   const [session, setSession] = useState(null);
   const [profile, setProfile] = useState(null);
@@ -66,7 +69,7 @@ export default function HomePage() {
     }
     const user = session.user;
     
-    const response = await fetch('http://localhost:8000/profile/update', {
+    const response = await fetch(`${BACKEND_URL}/profile/update`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_id: user.id, github_username: githubUsername })
@@ -91,7 +94,7 @@ export default function HomePage() {
     setIsLoading(true);
     setAnalysisResult(null);
     try {
-      const response = await fetch(`http://localhost:8000/analyze?github_username=${githubUsername}`);
+      const response = await fetch(`${BACKEND_URL}/analyze?github_username=${githubUsername}`);
       const data = await response.json();
       setAnalysisResult(data);
     } catch (error) {
@@ -151,7 +154,7 @@ export default function HomePage() {
                   type="text"
                   placeholder="Enter your GitHub username"
                   value={githubUsername}
-                  onChange={(e) => setGithubUsername(e.g.target.value)}
+                  onChange={(e) => setGithubUsername(e.target.value)}
                   className="flex-1 p-2 rounded-lg bg-gray-700 border border-gray-600"
                 />
                 <button onClick={handleProfileUpdate} className="p-2 rounded-lg bg-green-600 hover:bg-green-700">Save</button>
