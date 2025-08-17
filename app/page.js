@@ -1,103 +1,201 @@
-import Image from "next/image";
+'use client';
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { createClient } from '@supabase/supabase-js';
+import { Auth } from '@supabase/auth-ui-react';
+import { ThemeSupa } from '@supabase/auth-ui-shared';
 
-export default function Home() {
-  return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              app/page.js
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+// Initialize Supabase client using your .env.local file
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+export default function HomePage() {
+  const [session, setSession] = useState(null);
+  const [profile, setProfile] = useState(null);
+  const [githubUsername, setGithubUsername] = useState('');
+  const [analysisResult, setAnalysisResult] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+
+  useEffect(() => {
+    // Check for active session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      if (session) {
+        fetchProfile(session.user.id);
+      }
+    });
+
+    // Listen for auth changes (login/logout)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      if (session) {
+        fetchProfile(session.user.id);
+      } else {
+        setProfile(null);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // Function to fetch user profile from our 'profiles' table
+  async function fetchProfile(userId) {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('github_username')
+      .eq('id', userId)
+      .single();
+    
+    if (data) {
+      setProfile(data);
+      setGithubUsername(data.github_username || '');
+      if (!data.github_username) {
+        setIsEditing(true); // If no username, open edit mode automatically
+      }
+    }
+  }
+
+  // Function to save the GitHub username to the backend
+  async function handleProfileUpdate() {
+    if (!githubUsername) {
+      alert("Please enter a GitHub username.");
+      return;
+    }
+    const user = session.user;
+    
+    const response = await fetch('http://localhost:8000/profile/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: user.id, github_username: githubUsername })
+    });
+    
+    const result = await response.json();
+    if (result.success) {
+        alert("Profile updated successfully!");
+        fetchProfile(user.id); // Refresh profile data from DB
+        setIsEditing(false);
+    } else {
+        alert("Error updating profile: " + result.error);
+    }
+  }
+
+  // Function to analyze the GitHub profile
+  async function handleAnalyze() {
+    if (!githubUsername) {
+      alert("Please save your GitHub username first.");
+      return;
+    }
+    setIsLoading(true);
+    setAnalysisResult(null);
+    try {
+      const response = await fetch(`http://localhost:8000/analyze?github_username=${githubUsername}`);
+      const data = await response.json();
+      setAnalysisResult(data);
+    } catch (error) {
+      alert("Error: Could not connect to the backend. Is it running?");
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  // Helper component for the score bar
+  const ScoreBar = ({ score }) => {
+    const percentage = Math.min(Math.round(score), 100);
+    return (
+      <div className="w-full bg-gray-600 rounded-full h-4">
+        <div className="bg-blue-500 h-4 rounded-full" style={{ width: `${percentage}%` }}></div>
+      </div>
+    );
+  };
+
+  // If user is not logged in, show the login form
+  if (!session) {
+    return (
+      <main className="flex min-h-screen flex-col items-center justify-center bg-gray-900 p-8">
+        <div className="w-full max-w-md bg-gray-800 p-8 rounded-lg shadow-lg">
+          <h1 className="text-3xl font-bold text-center mb-4">Welcome to ProEduAlt</h1>
+          <Auth
+            supabaseClient={supabase}
+            appearance={{ theme: ThemeSupa }}
+            providers={['github', 'google', 'linkedin', 'phone']}
+            theme="dark"
+          />
         </div>
       </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+    );
+  }
+
+  // If user is logged in, show the main application
+  return (
+    <main className="flex min-h-screen flex-col items-center p-8 bg-gray-900 text-white">
+      <div className="w-full max-w-md">
+        <div className="flex justify-between items-center mb-6">
+          <p className="text-sm">Welcome, {session.user.email || session.user.phone}</p>
+          <button onClick={() => supabase.auth.signOut()} className="p-2 rounded-lg bg-red-600 hover:bg-red-700 font-semibold text-sm">Sign Out</button>
+        </div>
+
+        <div className="space-y-6 text-center">
+          <h1 className="text-5xl font-bold">ProEduAlt</h1>
+          <Link href="/jobs" className="text-blue-400 hover:underline">View Job Openings</Link>
+          <p className="text-lg text-gray-400">Your AI-Powered Career Guide</p>
+          
+          {/* Personalized Profile Section */}
+          <div className="p-4 bg-gray-800 rounded-lg border border-gray-700">
+            <h3 className="text-lg font-semibold mb-2">Your GitHub Profile</h3>
+            {isEditing || !profile?.github_username ? (
+              <div className="flex items-center space-x-2">
+                <input
+                  type="text"
+                  placeholder="Enter your GitHub username"
+                  value={githubUsername}
+                  onChange={(e) => setGithubUsername(e.g.target.value)}
+                  className="flex-1 p-2 rounded-lg bg-gray-700 border border-gray-600"
+                />
+                <button onClick={handleProfileUpdate} className="p-2 rounded-lg bg-green-600 hover:bg-green-700">Save</button>
+              </div>
+            ) : (
+              <div className="flex justify-between items-center">
+                <p className="font-mono">{profile.github_username}</p>
+                <button onClick={() => setIsEditing(true)} className="text-sm text-blue-400 hover:underline">Change</button>
+              </div>
+            )}
+          </div>
+
+          <button
+            onClick={handleAnalyze}
+            disabled={isLoading || !githubUsername}
+            className="w-full p-3 rounded-lg bg-blue-600 hover:bg-blue-700 font-semibold disabled:bg-gray-500"
+          >
+            {isLoading ? 'Analyzing...' : 'Analyze My Profile'}
+          </button>
+        </div>
+
+        {/* Results Section */}
+        {analysisResult && (
+          <div className="mt-10 w-full p-6 bg-gray-800 rounded-lg border border-gray-700">
+            <h2 className="text-2xl font-bold mb-4 text-center">Top Career Recommendations</h2>
+            {analysisResult.error ? (
+              <p className="text-center text-red-400">{analysisResult.error}</p>
+            ) : (
+              <ul className="space-y-4">
+                {analysisResult.map((rec) => (
+                  <li key={rec.career} className="bg-gray-700 p-4 rounded-md">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-lg font-bold">{rec.career}</span>
+                      <span className="text-blue-400 font-bold">{Math.round(rec.score)} Score</span>
+                    </div>
+                    <ScoreBar score={rec.score} />
+                    <p className="text-xs text-gray-400 mt-2">Based on skills: {rec.matched_skills.join(', ')}</p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+      </div>
+    </main>
   );
 }
