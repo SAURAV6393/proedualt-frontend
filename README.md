@@ -1,36 +1,76 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# ProEduAlt - Frontend 🚀
 
-## Getting Started
+<!-- Note: You need to upload your logo to a site like Imgur and paste the direct link here -->
 
-First, run the development server:
+This is the frontend for **ProEduAlt**, an AI-powered career guidance platform built with Next.js and React. This application provides a user-friendly interface for users to analyze their skills, get career recommendations, and find job opportunities.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+---
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🌐 Live Application
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+You can view the live deployed version of this project here:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- **Live URL:** **[https://proedualt-frontend.vercel.app/](https://proedualt-frontend.vercel.app/)**
 
-## Learn More
+---
 
-To learn more about Next.js, take a look at the following resources:
+## ✨ Features
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- **User Authentication:** Secure login and signup using Supabase Auth, with providers like GitHub, Google, LinkedIn, and Phone.
+- **Personalized Dashboard:** Users can save their GitHub username for a personalized experience.
+- **Dynamic Career Recommendations:** Displays AI-powered career suggestions based on the user's GitHub profile analysis.
+- **Interactive UI:** A clean, modern, and responsive user interface built with Tailwind CSS.
+- **Job Listings Page:** A dedicated page to browse relevant job and internship opportunities.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+---
 
-## Deploy on Vercel
+## 🛠️ Tech Stack
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- **Framework:** **Next.js** (React) - A powerful framework for building server-rendered and static web applications.
+- **Styling:** **Tailwind CSS** - A utility-first CSS framework for rapid UI development.
+- **Authentication & Database Client:** **Supabase Client** - Used for handling user authentication and fetching data from the Supabase database.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+---
+
+## ⚙️ Backend Server
+
+This frontend application communicates with a separate backend server built with FastAPI.
+
+- **Backend GitHub Repo:** **[https://github.com/SAURAV6393/proedualt-backend](https://github.com/SAURAV6393/proedualt-backend)**
+
+---
+
+## 🚀 Local Setup and Installation
+
+To run this project on your local machine, follow these steps:
+
+1.  **Clone the repository:**
+    ```bash
+    git clone [https://github.com/SAURAV6393/proedualt-frontend.git](https://github.com/SAURAV6393/proedualt-frontend.git)
+    cd proedualt-frontend
+    ```
+
+2.  **Install the required packages:**
+    ```bash
+    npm install
+    ```
+
+3.  **Set up Environment Variables:**
+    Create a new file named `.env.local` in the root of your project folder. Add your Supabase keys to this file:
+    ```
+    NEXT_PUBLIC_SUPABASE_URL=YOUR_SUPABASE_URL
+    NEXT_PUBLIC_SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY
+    ```
+    You can find these keys in your Supabase project dashboard under **Settings > API**.
+
+4.  **Run the development server:**
+    ```bash
+    npm run dev
+    ```
+    Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+
+---
+
+## ☁️ Deployment
+
+This frontend is deployed on **Vercel**. Any changes pushed to the `main` branch will trigger an automatic redeployment, ensuring the live application is always up-to-date.
