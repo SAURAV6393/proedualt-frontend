@@ -18,7 +18,7 @@ export default function HomePage() {
   const [profile, setProfile] = useState(null);
   const [githubUsername, setGithubUsername] = useState('');
   const [analysisResult, setAnalysisResult] = useState(null);
-  const [learningPlan, setLearningPlan] = useState(null); // New state for the learning plan
+  const [learningPlan, setLearningPlan] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
 
@@ -71,7 +71,7 @@ export default function HomePage() {
     if (!githubUsername) return alert("Please save your GitHub username first.");
     setIsLoading(true);
     setAnalysisResult(null);
-    setLearningPlan(null); // Clear old plan
+    setLearningPlan(null);
     try {
       const response = await fetch(`${BACKEND_URL}/analyze?github_username=${githubUsername}`);
       const data = await response.json();
@@ -83,7 +83,6 @@ export default function HomePage() {
     }
   }
 
-  // New function to generate the learning plan
   async function handleGeneratePlan(recommendation) {
     setIsLoading(true);
     setLearningPlan(null);
@@ -164,42 +163,46 @@ export default function HomePage() {
             {analysisResult.error ? (
               <p className="text-center text-red-400">{analysisResult.error}</p>
             ) : (
-              <ul className="space-y-4">
-                {analysisResult.map((rec) => (
-                  <li key={rec.career} className="bg-gray-700 p-4 rounded-md">
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-lg font-bold">{rec.career}</span>
-                      <span className="text-blue-400 font-bold">{Math.round(rec.score)} Score</span>
-                    </div>
-                    <ScoreBar score={rec.score} />
-                    <p className="text-xs text-gray-400 mt-2">Skills: {rec.matched_skills.join(', ')}</p>
-                    {/* New "Generate Plan" button */}
-                    <button onClick={() => handleGeneratePlan(rec)} disabled={isLoading} className="mt-3 w-full p-2 text-sm rounded-lg bg-green-600 hover:bg-green-700 disabled:bg-gray-500">
-                      Generate My Learning Plan
-                    </button>
-                  </li>
-                ))}
-              </ul>
+              // **BUG FIX 1: Check if analysisResult is an array before mapping**
+              Array.isArray(analysisResult) && (
+                <ul className="space-y-4">
+                  {analysisResult.map((rec) => (
+                    <li key={rec.career} className="bg-gray-700 p-4 rounded-md">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-lg font-bold">{rec.career}</span>
+                        <span className="text-blue-400 font-bold">{Math.round(rec.score)} Score</span>
+                      </div>
+                      <ScoreBar score={rec.score} />
+                      <p className="text-xs text-gray-400 mt-2">Skills: {rec.matched_skills.join(', ')}</p>
+                      <button onClick={() => handleGeneratePlan(rec)} disabled={isLoading} className="mt-3 w-full p-2 text-sm rounded-lg bg-green-600 hover:bg-green-700 disabled:bg-gray-500">
+                        Generate My Learning Plan
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )
             )}
           </div>
         )}
 
-        {/* New section to display the learning plan */}
         {learningPlan && (
             <div className="mt-10 w-full p-6 bg-gray-800 rounded-lg border border-gray-700">
                 <h2 className="text-2xl font-bold mb-4 text-center">Your Weekly Learning Plan</h2>
                 {learningPlan.error ? (
                     <p className="text-center text-red-400">{learningPlan.error}</p>
                 ) : (
-                    <ul className="space-y-3">
-                        {learningPlan.plan.map((item, index) => (
-                            <li key={index} className="bg-gray-700 p-3 rounded-md">
-                                <a href={item.url} target="_blank" rel="noopener noreferrer" className="font-semibold text-blue-300 hover:underline">
-                                    {item.title}
-                                </a>
-                            </li>
-                        ))}
-                    </ul>
+                    // **BUG FIX 2: Check if learningPlan.plan is an array before mapping**
+                    Array.isArray(learningPlan.plan) && (
+                        <ul className="space-y-3">
+                            {learningPlan.plan.map((item, index) => (
+                                <li key={index} className="bg-gray-700 p-3 rounded-md">
+                                    <a href={item.url} target="_blank" rel="noopener noreferrer" className="font-semibold text-blue-300 hover:underline">
+                                        {item.title}
+                                    </a>
+                                </li>
+                            ))}
+                        </ul>
+                    )
                 )}
             </div>
         )}
