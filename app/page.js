@@ -5,13 +5,12 @@ import { createClient } from '@supabase/supabase-js';
 import { Auth } from '@supabase/auth-ui-react';
 import { ThemeSupa } from '@supabase/auth-ui-shared';
 
-// Initialize Supabase client using your .env.local file
+// Initialize Supabase client
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 );
 
-// Define the live backend URL
 const BACKEND_URL = "https://proedualt-backend63.onrender.com";
 
 export default function HomePage() {
@@ -19,19 +18,16 @@ export default function HomePage() {
   const [profile, setProfile] = useState(null);
   const [githubUsername, setGithubUsername] = useState('');
   const [analysisResult, setAnalysisResult] = useState(null);
+  const [learningPlan, setLearningPlan] = useState(null); // New state for the learning plan
   const [isLoading, setIsLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
 
   useEffect(() => {
-    // Check for active session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      if (session) {
-        fetchProfile(session.user.id);
-      }
+      if (session) fetchProfile(session.user.id);
     });
 
-    // Listen for auth changes (login/logout)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       if (session) {
@@ -44,67 +40,71 @@ export default function HomePage() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Function to fetch user profile from our 'profiles' table
   async function fetchProfile(userId) {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('github_username')
-      .eq('id', userId)
-      .single();
-    
+    const { data } = await supabase.from('profiles').select('github_username').eq('id', userId).single();
     if (data) {
       setProfile(data);
       setGithubUsername(data.github_username || '');
-      if (!data.github_username) {
-        setIsEditing(true); // If no username, open edit mode automatically
-      }
+      if (!data.github_username) setIsEditing(true);
     }
   }
 
-  // Function to save the GitHub username to the backend
   async function handleProfileUpdate() {
-    if (!githubUsername) {
-      alert("Please enter a GitHub username.");
-      return;
-    }
-    const user = session.user;
-    
+    if (!githubUsername) return alert("Please enter a GitHub username.");
+    const { user } = session;
     const response = await fetch(`${BACKEND_URL}/profile/update`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: user.id, github_username: githubUsername })
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: user.id, github_username: githubUsername }),
     });
-    
     const result = await response.json();
     if (result.success) {
-        alert("Profile updated successfully!");
-        fetchProfile(user.id); // Refresh profile data from DB
-        setIsEditing(false);
+      alert("Profile updated successfully!");
+      fetchProfile(user.id);
+      setIsEditing(false);
     } else {
-        alert("Error updating profile: " + result.error);
+      alert("Error updating profile: " + result.error);
     }
   }
 
-  // Function to analyze the GitHub profile
   async function handleAnalyze() {
-    if (!githubUsername) {
-      alert("Please save your GitHub username first.");
-      return;
-    }
+    if (!githubUsername) return alert("Please save your GitHub username first.");
     setIsLoading(true);
     setAnalysisResult(null);
+    setLearningPlan(null); // Clear old plan
     try {
       const response = await fetch(`${BACKEND_URL}/analyze?github_username=${githubUsername}`);
       const data = await response.json();
       setAnalysisResult(data);
     } catch (error) {
-      alert("Error: Could not connect to the backend. Is it running?");
+      alert("Error: Could not connect to the backend.");
     } finally {
       setIsLoading(false);
     }
   }
 
-  // Helper component for the score bar
+  // New function to generate the learning plan
+  async function handleGeneratePlan(recommendation) {
+    setIsLoading(true);
+    setLearningPlan(null);
+    try {
+      const response = await fetch(`${BACKEND_URL}/generate-plan`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_skills: recommendation.matched_skills,
+          target_career: recommendation,
+        }),
+      });
+      const data = await response.json();
+      setLearningPlan(data);
+    } catch (error) {
+      alert("Error generating plan.");
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
   const ScoreBar = ({ score }) => {
     const percentage = Math.min(Math.round(score), 100);
     return (
@@ -114,24 +114,17 @@ export default function HomePage() {
     );
   };
 
-  // If user is not logged in, show the login form
   if (!session) {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center bg-gray-900 p-8">
         <div className="w-full max-w-md bg-gray-800 p-8 rounded-lg shadow-lg">
           <h1 className="text-3xl font-bold text-center mb-4">Welcome to ProEduAlt</h1>
-          <Auth
-            supabaseClient={supabase}
-            appearance={{ theme: ThemeSupa }}
-            providers={['github', 'google', 'linkedin', 'phone']}
-            theme="dark"
-          />
+          <Auth supabaseClient={supabase} appearance={{ theme: ThemeSupa }} providers={['github', 'google']} theme="dark" />
         </div>
       </main>
     );
   }
 
-  // If user is logged in, show the main application
   return (
     <main className="flex min-h-screen flex-col items-center p-8 bg-gray-900 text-white">
       <div className="w-full max-w-md">
@@ -145,18 +138,11 @@ export default function HomePage() {
           <Link href="/jobs" className="text-blue-400 hover:underline">View Job Openings</Link>
           <p className="text-lg text-gray-400">Your AI-Powered Career Guide</p>
           
-          {/* Personalized Profile Section */}
           <div className="p-4 bg-gray-800 rounded-lg border border-gray-700">
             <h3 className="text-lg font-semibold mb-2">Your GitHub Profile</h3>
             {isEditing || !profile?.github_username ? (
               <div className="flex items-center space-x-2">
-                <input
-                  type="text"
-                  placeholder="Enter your GitHub username"
-                  value={githubUsername}
-                  onChange={(e) => setGithubUsername(e.target.value)}
-                  className="flex-1 p-2 rounded-lg bg-gray-700 border border-gray-600"
-                />
+                <input type="text" placeholder="Enter GitHub username" value={githubUsername} onChange={(e) => setGithubUsername(e.target.value)} className="flex-1 p-2 rounded-lg bg-gray-700 border border-gray-600" />
                 <button onClick={handleProfileUpdate} className="p-2 rounded-lg bg-green-600 hover:bg-green-700">Save</button>
               </div>
             ) : (
@@ -167,16 +153,11 @@ export default function HomePage() {
             )}
           </div>
 
-          <button
-            onClick={handleAnalyze}
-            disabled={isLoading || !githubUsername}
-            className="w-full p-3 rounded-lg bg-blue-600 hover:bg-blue-700 font-semibold disabled:bg-gray-500"
-          >
+          <button onClick={handleAnalyze} disabled={isLoading || !githubUsername} className="w-full p-3 rounded-lg bg-blue-600 hover:bg-blue-700 font-semibold disabled:bg-gray-500">
             {isLoading ? 'Analyzing...' : 'Analyze My Profile'}
           </button>
         </div>
 
-        {/* Results Section */}
         {analysisResult && (
           <div className="mt-10 w-full p-6 bg-gray-800 rounded-lg border border-gray-700">
             <h2 className="text-2xl font-bold mb-4 text-center">Top Career Recommendations</h2>
@@ -191,12 +172,36 @@ export default function HomePage() {
                       <span className="text-blue-400 font-bold">{Math.round(rec.score)} Score</span>
                     </div>
                     <ScoreBar score={rec.score} />
-                    <p className="text-xs text-gray-400 mt-2">Based on skills: {rec.matched_skills.join(', ')}</p>
+                    <p className="text-xs text-gray-400 mt-2">Skills: {rec.matched_skills.join(', ')}</p>
+                    {/* New "Generate Plan" button */}
+                    <button onClick={() => handleGeneratePlan(rec)} disabled={isLoading} className="mt-3 w-full p-2 text-sm rounded-lg bg-green-600 hover:bg-green-700 disabled:bg-gray-500">
+                      Generate My Learning Plan
+                    </button>
                   </li>
                 ))}
               </ul>
             )}
           </div>
+        )}
+
+        {/* New section to display the learning plan */}
+        {learningPlan && (
+            <div className="mt-10 w-full p-6 bg-gray-800 rounded-lg border border-gray-700">
+                <h2 className="text-2xl font-bold mb-4 text-center">Your Weekly Learning Plan</h2>
+                {learningPlan.error ? (
+                    <p className="text-center text-red-400">{learningPlan.error}</p>
+                ) : (
+                    <ul className="space-y-3">
+                        {learningPlan.plan.map((item, index) => (
+                            <li key={index} className="bg-gray-700 p-3 rounded-md">
+                                <a href={item.url} target="_blank" rel="noopener noreferrer" className="font-semibold text-blue-300 hover:underline">
+                                    {item.title}
+                                </a>
+                            </li>
+                        ))}
+                    </ul>
+                )}
+            </div>
         )}
       </div>
     </main>
