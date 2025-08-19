@@ -19,21 +19,28 @@ export default function HomePage() {
   const [githubUsername, setGithubUsername] = useState('');
   const [analysisResult, setAnalysisResult] = useState(null);
   const [learningPlan, setLearningPlan] = useState(null);
+  const [completedTasks, setCompletedTasks] = useState([]); // New state for completed tasks
   const [isLoading, setIsLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
 
+  // Fetch user session and profile on load
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      if (session) fetchProfile(session.user.id);
+      if (session) {
+        fetchProfile(session.user.id);
+        fetchLearningProgress(session.user.id); // Fetch progress on load
+      }
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       if (session) {
         fetchProfile(session.user.id);
+        fetchLearningProgress(session.user.id); // Fetch progress on login
       } else {
         setProfile(null);
+        setCompletedTasks([]); // Clear progress on logout
       }
     });
 
@@ -49,7 +56,17 @@ export default function HomePage() {
     }
   }
 
+  // New function to fetch learning progress
+  async function fetchLearningProgress(userId) {
+    const response = await fetch(`${BACKEND_URL}/learning-progress/${userId}`);
+    const data = await response.json();
+    if (data.completed_ids) {
+      setCompletedTasks(data.completed_ids);
+    }
+  }
+
   async function handleProfileUpdate() {
+    // ... (This function remains the same)
     if (!githubUsername) return alert("Please enter a GitHub username.");
     const { user } = session;
     const response = await fetch(`${BACKEND_URL}/profile/update`, {
@@ -68,6 +85,7 @@ export default function HomePage() {
   }
 
   async function handleAnalyze() {
+    // ... (This function remains the same)
     if (!githubUsername) return alert("Please save your GitHub username first.");
     setIsLoading(true);
     setAnalysisResult(null);
@@ -84,16 +102,14 @@ export default function HomePage() {
   }
 
   async function handleGeneratePlan(recommendation) {
+    // ... (This function remains the same)
     setIsLoading(true);
     setLearningPlan(null);
     try {
       const response = await fetch(`${BACKEND_URL}/generate-plan`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          user_skills: recommendation.matched_skills,
-          target_career: recommendation,
-        }),
+        body: JSON.stringify({ user_skills: recommendation.matched_skills, target_career: recommendation }),
       });
       const data = await response.json();
       setLearningPlan(data);
@@ -104,7 +120,29 @@ export default function HomePage() {
     }
   }
 
+  // New function to handle checkbox clicks
+  async function handleTaskToggle(resourceId, isChecked) {
+    // Optimistically update the UI
+    if (isChecked) {
+      setCompletedTasks([...completedTasks, resourceId]);
+    } else {
+      setCompletedTasks(completedTasks.filter(id => id !== resourceId));
+    }
+
+    // Send the update to the backend
+    await fetch(`${BACKEND_URL}/learning-progress`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        user_id: session.user.id,
+        resource_id: resourceId,
+        is_complete: isChecked,
+      }),
+    });
+  }
+
   const ScoreBar = ({ score }) => {
+    // ... (This component remains the same)
     const percentage = Math.min(Math.round(score), 100);
     return (
       <div className="w-full bg-gray-600 rounded-full h-4">
@@ -114,6 +152,7 @@ export default function HomePage() {
   };
 
   if (!session) {
+    // ... (Login form remains the same)
     return (
       <main className="flex min-h-screen flex-col items-center justify-center bg-gray-900 p-8">
         <div className="w-full max-w-md bg-gray-800 p-8 rounded-lg shadow-lg">
@@ -127,16 +166,15 @@ export default function HomePage() {
   return (
     <main className="flex min-h-screen flex-col items-center p-8 bg-gray-900 text-white">
       <div className="w-full max-w-md">
+        {/* ... (Header and main app UI remains the same) ... */}
         <div className="flex justify-between items-center mb-6">
           <p className="text-sm">Welcome, {session.user.email || session.user.phone}</p>
           <button onClick={() => supabase.auth.signOut()} className="p-2 rounded-lg bg-red-600 hover:bg-red-700 font-semibold text-sm">Sign Out</button>
         </div>
-
         <div className="space-y-6 text-center">
           <h1 className="text-5xl font-bold">ProEduAlt</h1>
           <Link href="/jobs" className="text-blue-400 hover:underline">View Job Openings</Link>
           <p className="text-lg text-gray-400">Your AI-Powered Career Guide</p>
-          
           <div className="p-4 bg-gray-800 rounded-lg border border-gray-700">
             <h3 className="text-lg font-semibold mb-2">Your GitHub Profile</h3>
             {isEditing || !profile?.github_username ? (
@@ -151,19 +189,15 @@ export default function HomePage() {
               </div>
             )}
           </div>
-
           <button onClick={handleAnalyze} disabled={isLoading || !githubUsername} className="w-full p-3 rounded-lg bg-blue-600 hover:bg-blue-700 font-semibold disabled:bg-gray-500">
             {isLoading ? 'Analyzing...' : 'Analyze My Profile'}
           </button>
         </div>
-
         {analysisResult && (
+          // ... (Analysis result UI remains the same) ...
           <div className="mt-10 w-full p-6 bg-gray-800 rounded-lg border border-gray-700">
             <h2 className="text-2xl font-bold mb-4 text-center">Top Career Recommendations</h2>
-            {analysisResult.error ? (
-              <p className="text-center text-red-400">{analysisResult.error}</p>
-            ) : (
-              // **BUG FIX 1: Check if analysisResult is an array before mapping**
+            {analysisResult.error ? ( <p className="text-center text-red-400">{analysisResult.error}</p> ) : (
               Array.isArray(analysisResult) && (
                 <ul className="space-y-4">
                   {analysisResult.map((rec) => (
@@ -185,26 +219,35 @@ export default function HomePage() {
           </div>
         )}
 
+        {/* --- UPDATED LEARNING PLAN SECTION --- */}
         {learningPlan && (
-            <div className="mt-10 w-full p-6 bg-gray-800 rounded-lg border border-gray-700">
-                <h2 className="text-2xl font-bold mb-4 text-center">Your Weekly Learning Plan</h2>
-                {learningPlan.error ? (
-                    <p className="text-center text-red-400">{learningPlan.error}</p>
-                ) : (
-                    // **BUG FIX 2: Check if learningPlan.plan is an array before mapping**
-                    Array.isArray(learningPlan.plan) && (
-                        <ul className="space-y-3">
-                            {learningPlan.plan.map((item, index) => (
-                                <li key={index} className="bg-gray-700 p-3 rounded-md">
-                                    <a href={item.url} target="_blank" rel="noopener noreferrer" className="font-semibold text-blue-300 hover:underline">
-                                        {item.title}
-                                    </a>
-                                </li>
-                            ))}
-                        </ul>
-                    )
-                )}
-            </div>
+          <div className="mt-10 w-full p-6 bg-gray-800 rounded-lg border border-gray-700">
+            <h2 className="text-2xl font-bold mb-4 text-center">Your Weekly Learning Plan</h2>
+            {learningPlan.error ? (
+              <p className="text-center text-red-400">{learningPlan.error}</p>
+            ) : (
+              Array.isArray(learningPlan.plan) && (
+                <ul className="space-y-3">
+                  {learningPlan.plan.map((item) => (
+                    <li key={item.id} className="bg-gray-700 p-3 rounded-md flex items-center">
+                      <input
+                        type="checkbox"
+                        id={`task-${item.id}`}
+                        className="mr-3 h-5 w-5 rounded"
+                        checked={completedTasks.includes(item.id)}
+                        onChange={(e) => handleTaskToggle(item.id, e.target.checked)}
+                      />
+                      <label htmlFor={`task-${item.id}`} className="flex-1">
+                        <a href={item.url} target="_blank" rel="noopener noreferrer" className="font-semibold text-blue-300 hover:underline">
+                          {item.title}
+                        </a>
+                      </label>
+                    </li>
+                  ))}
+                </ul>
+              )
+            )}
+          </div>
         )}
       </div>
     </main>
