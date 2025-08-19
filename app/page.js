@@ -22,7 +22,7 @@ export default function HomePage() {
   const [completedTasks, setCompletedTasks] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [selectedFile, setSelectedFile] = useState(null); // New state for the resume file
+  const [selectedFile, setSelectedFile] = useState(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -48,7 +48,7 @@ export default function HomePage() {
   }, []);
 
   async function fetchProfile(userId) {
-    const { data } = await supabase.from('profiles').select('github_username').eq('id', userId).single();
+    const { data } = await supabase.from('profiles').select('github_username, resume_skills').eq('id', userId).single();
     if (data) {
       setProfile(data);
       setGithubUsername(data.github_username || '');
@@ -59,29 +59,24 @@ export default function HomePage() {
   async function fetchLearningProgress(userId) {
     const response = await fetch(`${BACKEND_URL}/learning-progress/${userId}`);
     const data = await response.json();
-    if (data.completed_ids) {
-      setCompletedTasks(data.completed_ids);
-    }
+    if (data.completed_ids) setCompletedTasks(data.completed_ids);
   }
 
-  // New function to handle resume upload
   async function handleResumeUpload() {
-    if (!selectedFile) {
-      alert("Please select a PDF file first.");
-      return;
-    }
+    if (!selectedFile) return alert("Please select a PDF file first.");
     setIsLoading(true);
     const formData = new FormData();
     formData.append('file', selectedFile);
 
     try {
-      const response = await fetch(`${BACKEND_URL}/upload-resume`, {
+      const response = await fetch(`${BACKEND_URL}/upload-resume/${session.user.id}`, {
         method: 'POST',
         body: formData,
       });
       const result = await response.json();
       if (response.ok) {
-        alert("Resume uploaded successfully! \nPreview: " + result.extracted_text_preview);
+        alert("Resume processed successfully!\nSkills found: " + (result.skills_found?.join(', ') || 'None'));
+        fetchProfile(session.user.id); // Refresh profile to get new resume skills
       } else {
         throw new Error(result.detail || "Failed to upload resume.");
       }
@@ -92,7 +87,6 @@ export default function HomePage() {
     }
   }
 
-  // ... (All other functions like handleProfileUpdate, handleAnalyze, etc. remain the same)
   async function handleProfileUpdate() {
     if (!githubUsername) return alert("Please enter a GitHub username.");
     const { user } = session;
@@ -117,7 +111,8 @@ export default function HomePage() {
     setAnalysisResult(null);
     setLearningPlan(null);
     try {
-      const response = await fetch(`${BACKEND_URL}/analyze?github_username=${githubUsername}`);
+      // UPDATED: Pass user_id to the analyze endpoint
+      const response = await fetch(`${BACKEND_URL}/analyze/${session.user.id}`);
       const data = await response.json();
       setAnalysisResult(data);
     } catch (error) {
@@ -159,7 +154,7 @@ export default function HomePage() {
   }
 
   const ScoreBar = ({ score }) => {
-    const percentage = Math.min(Math.round(score), 100);
+    const percentage = Math.min(Math.round(score * 10), 100); // Adjusted score display
     return (
       <div className="w-full bg-gray-600 rounded-full h-4">
         <div className="bg-blue-500 h-4 rounded-full" style={{ width: `${percentage}%` }}></div>
@@ -181,7 +176,6 @@ export default function HomePage() {
   return (
     <main className="flex min-h-screen flex-col items-center p-8 bg-gray-900 text-white">
       <div className="w-full max-w-md">
-        {/* ... (Header remains the same) ... */}
         <div className="flex justify-between items-center mb-6">
           <p className="text-sm">Welcome, {session.user.email || session.user.phone}</p>
           <button onClick={() => supabase.auth.signOut()} className="p-2 rounded-lg bg-red-600 hover:bg-red-700 font-semibold text-sm">Sign Out</button>
@@ -192,7 +186,6 @@ export default function HomePage() {
           <Link href="/jobs" className="text-blue-400 hover:underline">View Job Openings</Link>
           <p className="text-lg text-gray-400">Your AI-Powered Career Guide</p>
           
-          {/* ... (GitHub Profile Section remains the same) ... */}
           <div className="p-4 bg-gray-800 rounded-lg border border-gray-700">
             <h3 className="text-lg font-semibold mb-2">Your GitHub Profile</h3>
             {isEditing || !profile?.github_username ? (
@@ -208,28 +201,22 @@ export default function HomePage() {
             )}
           </div>
 
-          {/* New Resume Upload Section */}
           <div className="p-4 bg-gray-800 rounded-lg border border-gray-700">
             <h3 className="text-lg font-semibold mb-2">Upload Your Resume</h3>
             <div className="flex items-center space-x-2">
-              <input
-                type="file"
-                accept=".pdf"
-                onChange={(e) => setSelectedFile(e.target.files[0])}
-                className="flex-1 text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-              />
+              <input type="file" accept=".pdf" onChange={(e) => setSelectedFile(e.target.files[0])} className="flex-1 text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
               <button onClick={handleResumeUpload} disabled={isLoading || !selectedFile} className="p-2 rounded-lg bg-green-600 hover:bg-green-700 disabled:bg-gray-500">
                 {isLoading ? 'Uploading...' : 'Upload'}
               </button>
             </div>
+            {profile?.resume_skills && <p className="text-xs text-gray-400 mt-2">Resume Skills: {profile.resume_skills.join(', ')}</p>}
           </div>
 
           <button onClick={handleAnalyze} disabled={isLoading || !githubUsername} className="w-full p-3 rounded-lg bg-blue-600 hover:bg-blue-700 font-semibold disabled:bg-gray-500">
-            Analyze My Profile
+            Analyze Combined Profile
           </button>
         </div>
 
-        {/* ... (Results and Learning Plan sections remain the same) ... */}
         {analysisResult && (
           <div className="mt-10 w-full p-6 bg-gray-800 rounded-lg border border-gray-700">
             <h2 className="text-2xl font-bold mb-4 text-center">Top Career Recommendations</h2>
@@ -240,10 +227,10 @@ export default function HomePage() {
                     <li key={rec.career} className="bg-gray-700 p-4 rounded-md">
                       <div className="flex justify-between items-center mb-2">
                         <span className="text-lg font-bold">{rec.career}</span>
-                        <span className="text-blue-400 font-bold">{Math.round(rec.score)} Score</span>
+                        <span className="text-blue-400 font-bold">{Math.round(rec.score * 10)} Score</span>
                       </div>
                       <ScoreBar score={rec.score} />
-                      <p className="text-xs text-gray-400 mt-2">Skills: {rec.matched_skills.join(', ')}</p>
+                      <p className="text-xs text-gray-400 mt-2">Based on skills: {rec.matched_skills.join(', ')}</p>
                       <button onClick={() => handleGeneratePlan(rec)} disabled={isLoading} className="mt-3 w-full p-2 text-sm rounded-lg bg-green-600 hover:bg-green-700 disabled:bg-gray-500">
                         Generate My Learning Plan
                       </button>
