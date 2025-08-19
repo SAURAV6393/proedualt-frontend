@@ -19,17 +19,17 @@ export default function HomePage() {
   const [githubUsername, setGithubUsername] = useState('');
   const [analysisResult, setAnalysisResult] = useState(null);
   const [learningPlan, setLearningPlan] = useState(null);
-  const [completedTasks, setCompletedTasks] = useState([]); // New state for completed tasks
+  const [completedTasks, setCompletedTasks] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null); // New state for the resume file
 
-  // Fetch user session and profile on load
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       if (session) {
         fetchProfile(session.user.id);
-        fetchLearningProgress(session.user.id); // Fetch progress on load
+        fetchLearningProgress(session.user.id);
       }
     });
 
@@ -37,10 +37,10 @@ export default function HomePage() {
       setSession(session);
       if (session) {
         fetchProfile(session.user.id);
-        fetchLearningProgress(session.user.id); // Fetch progress on login
+        fetchLearningProgress(session.user.id);
       } else {
         setProfile(null);
-        setCompletedTasks([]); // Clear progress on logout
+        setCompletedTasks([]);
       }
     });
 
@@ -56,7 +56,6 @@ export default function HomePage() {
     }
   }
 
-  // New function to fetch learning progress
   async function fetchLearningProgress(userId) {
     const response = await fetch(`${BACKEND_URL}/learning-progress/${userId}`);
     const data = await response.json();
@@ -65,8 +64,36 @@ export default function HomePage() {
     }
   }
 
+  // New function to handle resume upload
+  async function handleResumeUpload() {
+    if (!selectedFile) {
+      alert("Please select a PDF file first.");
+      return;
+    }
+    setIsLoading(true);
+    const formData = new FormData();
+    formData.append('file', selectedFile);
+
+    try {
+      const response = await fetch(`${BACKEND_URL}/upload-resume`, {
+        method: 'POST',
+        body: formData,
+      });
+      const result = await response.json();
+      if (response.ok) {
+        alert("Resume uploaded successfully! \nPreview: " + result.extracted_text_preview);
+      } else {
+        throw new Error(result.detail || "Failed to upload resume.");
+      }
+    } catch (error) {
+      alert("Error: " + error.message);
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  // ... (All other functions like handleProfileUpdate, handleAnalyze, etc. remain the same)
   async function handleProfileUpdate() {
-    // ... (This function remains the same)
     if (!githubUsername) return alert("Please enter a GitHub username.");
     const { user } = session;
     const response = await fetch(`${BACKEND_URL}/profile/update`, {
@@ -85,7 +112,6 @@ export default function HomePage() {
   }
 
   async function handleAnalyze() {
-    // ... (This function remains the same)
     if (!githubUsername) return alert("Please save your GitHub username first.");
     setIsLoading(true);
     setAnalysisResult(null);
@@ -102,7 +128,6 @@ export default function HomePage() {
   }
 
   async function handleGeneratePlan(recommendation) {
-    // ... (This function remains the same)
     setIsLoading(true);
     setLearningPlan(null);
     try {
@@ -120,29 +145,20 @@ export default function HomePage() {
     }
   }
 
-  // New function to handle checkbox clicks
   async function handleTaskToggle(resourceId, isChecked) {
-    // Optimistically update the UI
     if (isChecked) {
       setCompletedTasks([...completedTasks, resourceId]);
     } else {
       setCompletedTasks(completedTasks.filter(id => id !== resourceId));
     }
-
-    // Send the update to the backend
     await fetch(`${BACKEND_URL}/learning-progress`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        user_id: session.user.id,
-        resource_id: resourceId,
-        is_complete: isChecked,
-      }),
+      body: JSON.stringify({ user_id: session.user.id, resource_id: resourceId, is_complete: isChecked }),
     });
   }
 
   const ScoreBar = ({ score }) => {
-    // ... (This component remains the same)
     const percentage = Math.min(Math.round(score), 100);
     return (
       <div className="w-full bg-gray-600 rounded-full h-4">
@@ -152,7 +168,6 @@ export default function HomePage() {
   };
 
   if (!session) {
-    // ... (Login form remains the same)
     return (
       <main className="flex min-h-screen flex-col items-center justify-center bg-gray-900 p-8">
         <div className="w-full max-w-md bg-gray-800 p-8 rounded-lg shadow-lg">
@@ -166,15 +181,18 @@ export default function HomePage() {
   return (
     <main className="flex min-h-screen flex-col items-center p-8 bg-gray-900 text-white">
       <div className="w-full max-w-md">
-        {/* ... (Header and main app UI remains the same) ... */}
+        {/* ... (Header remains the same) ... */}
         <div className="flex justify-between items-center mb-6">
           <p className="text-sm">Welcome, {session.user.email || session.user.phone}</p>
           <button onClick={() => supabase.auth.signOut()} className="p-2 rounded-lg bg-red-600 hover:bg-red-700 font-semibold text-sm">Sign Out</button>
         </div>
+
         <div className="space-y-6 text-center">
           <h1 className="text-5xl font-bold">ProEduAlt</h1>
           <Link href="/jobs" className="text-blue-400 hover:underline">View Job Openings</Link>
           <p className="text-lg text-gray-400">Your AI-Powered Career Guide</p>
+          
+          {/* ... (GitHub Profile Section remains the same) ... */}
           <div className="p-4 bg-gray-800 rounded-lg border border-gray-700">
             <h3 className="text-lg font-semibold mb-2">Your GitHub Profile</h3>
             {isEditing || !profile?.github_username ? (
@@ -189,12 +207,30 @@ export default function HomePage() {
               </div>
             )}
           </div>
+
+          {/* New Resume Upload Section */}
+          <div className="p-4 bg-gray-800 rounded-lg border border-gray-700">
+            <h3 className="text-lg font-semibold mb-2">Upload Your Resume</h3>
+            <div className="flex items-center space-x-2">
+              <input
+                type="file"
+                accept=".pdf"
+                onChange={(e) => setSelectedFile(e.target.files[0])}
+                className="flex-1 text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+              />
+              <button onClick={handleResumeUpload} disabled={isLoading || !selectedFile} className="p-2 rounded-lg bg-green-600 hover:bg-green-700 disabled:bg-gray-500">
+                {isLoading ? 'Uploading...' : 'Upload'}
+              </button>
+            </div>
+          </div>
+
           <button onClick={handleAnalyze} disabled={isLoading || !githubUsername} className="w-full p-3 rounded-lg bg-blue-600 hover:bg-blue-700 font-semibold disabled:bg-gray-500">
-            {isLoading ? 'Analyzing...' : 'Analyze My Profile'}
+            Analyze My Profile
           </button>
         </div>
+
+        {/* ... (Results and Learning Plan sections remain the same) ... */}
         {analysisResult && (
-          // ... (Analysis result UI remains the same) ...
           <div className="mt-10 w-full p-6 bg-gray-800 rounded-lg border border-gray-700">
             <h2 className="text-2xl font-bold mb-4 text-center">Top Career Recommendations</h2>
             {analysisResult.error ? ( <p className="text-center text-red-400">{analysisResult.error}</p> ) : (
@@ -218,29 +254,17 @@ export default function HomePage() {
             )}
           </div>
         )}
-
-        {/* --- UPDATED LEARNING PLAN SECTION --- */}
         {learningPlan && (
           <div className="mt-10 w-full p-6 bg-gray-800 rounded-lg border border-gray-700">
             <h2 className="text-2xl font-bold mb-4 text-center">Your Weekly Learning Plan</h2>
-            {learningPlan.error ? (
-              <p className="text-center text-red-400">{learningPlan.error}</p>
-            ) : (
+            {learningPlan.error ? ( <p className="text-center text-red-400">{learningPlan.error}</p> ) : (
               Array.isArray(learningPlan.plan) && (
                 <ul className="space-y-3">
                   {learningPlan.plan.map((item) => (
                     <li key={item.id} className="bg-gray-700 p-3 rounded-md flex items-center">
-                      <input
-                        type="checkbox"
-                        id={`task-${item.id}`}
-                        className="mr-3 h-5 w-5 rounded"
-                        checked={completedTasks.includes(item.id)}
-                        onChange={(e) => handleTaskToggle(item.id, e.target.checked)}
-                      />
+                      <input type="checkbox" id={`task-${item.id}`} className="mr-3 h-5 w-5 rounded" checked={completedTasks.includes(item.id)} onChange={(e) => handleTaskToggle(item.id, e.target.checked)} />
                       <label htmlFor={`task-${item.id}`} className="flex-1">
-                        <a href={item.url} target="_blank" rel="noopener noreferrer" className="font-semibold text-blue-300 hover:underline">
-                          {item.title}
-                        </a>
+                        <a href={item.url} target="_blank" rel="noopener noreferrer" className="font-semibold text-blue-300 hover:underline">{item.title}</a>
                       </label>
                     </li>
                   ))}
