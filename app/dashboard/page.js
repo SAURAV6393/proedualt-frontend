@@ -14,71 +14,7 @@ const supabase = createClient(
 
 const BACKEND_URL = "https://proedualt-backend63.onrender.com";
 
-// --- NEW CHATBOT COMPONENT ---
-const Chatbot = ({ userSkills, onClose }) => {
-  const [messages, setMessages] = useState([
-    { text: "Hello! I'm your AI Mentor. Ask me anything about your tech career.", sender: 'ai' }
-  ]);
-  const [input, setInput] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-
-  const handleSendMessage = async (e) => {
-    e.preventDefault();
-    if (!input.trim()) return;
-
-    const userMessage = { text: input, sender: 'user' };
-    setMessages(prev => [...prev, userMessage]);
-    setInput('');
-    setIsLoading(true);
-
-    try {
-      const response = await fetch(`${BACKEND_URL}/ask-mentor`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question: input, user_skills: userSkills }),
-      });
-      const data = await response.json();
-      const aiMessage = { text: data.answer || "Sorry, I couldn't process that.", sender: 'ai' };
-      setMessages(prev => [...prev, aiMessage]);
-    } catch (error) {
-      const errorMessage = { text: "Sorry, I'm having trouble connecting.", sender: 'ai' };
-      setMessages(prev => [...prev, errorMessage]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  return (
-    <div className="fixed bottom-4 right-4 w-96 h-[500px] bg-gray-800 border border-gray-700 rounded-lg shadow-xl flex flex-col z-50">
-      <div className="p-3 bg-gray-700 flex justify-between items-center rounded-t-lg">
-        <h3 className="font-bold text-white">AI Mentor</h3>
-        <button onClick={onClose} className="text-white font-bold">&times;</button>
-      </div>
-      <div className="flex-1 p-4 overflow-y-auto">
-        {messages.map((msg, index) => (
-          <div key={index} className={`mb-3 p-2 rounded-lg ${msg.sender === 'ai' ? 'bg-blue-900 text-left' : 'bg-gray-600 text-right'}`}>
-            <p className="text-sm">{msg.text}</p>
-          </div>
-        ))}
-        {isLoading && <p className="text-sm text-gray-400">AI Mentor is typing...</p>}
-      </div>
-      <form onSubmit={handleSendMessage} className="p-3 border-t border-gray-700 flex">
-        <input
-          type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Ask a question..."
-          className="flex-1 p-2 bg-gray-700 rounded-l-lg focus:outline-none"
-        />
-        <button type="submit" className="p-2 bg-blue-600 rounded-r-lg font-semibold">Send</button>
-      </form>
-    </div>
-  );
-};
-
-
 const SkillsRadarChart = ({ userSkills, requiredSkills }) => {
-  // ... (This component remains the same)
   const data = requiredSkills.map(skill => ({
     skill: skill, "Your Skills": userSkills.includes(skill) ? 100 : 20, "Required": 100,
   }));
@@ -96,7 +32,7 @@ const SkillsRadarChart = ({ userSkills, requiredSkills }) => {
   );
 };
 
-export default function HomePage() {
+export default function DashboardPage() {
   const [session, setSession] = useState(null);
   const [profile, setProfile] = useState(null);
   const [githubUsername, setGithubUsername] = useState('');
@@ -106,9 +42,7 @@ export default function HomePage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
-  const [isChatOpen, setIsChatOpen] = useState(false); // New state for chatbot visibility
 
-  // ... (All other functions like useEffect, fetchProfile, etc. remain the same)
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
@@ -237,6 +171,7 @@ export default function HomePage() {
       <main className="flex min-h-screen flex-col items-center justify-center bg-gray-900 p-8">
         <div className="w-full max-w-md bg-gray-800 p-8 rounded-lg shadow-lg">
           <h1 className="text-3xl font-bold text-center mb-4">Welcome to ProEduAlt</h1>
+          <p className="text-center text-gray-400 mb-6">Please sign in to continue to your dashboard.</p>
           <Auth supabaseClient={supabase} appearance={{ theme: ThemeSupa }} providers={['github', 'google']} theme="dark" />
         </div>
       </main>
@@ -246,7 +181,6 @@ export default function HomePage() {
   return (
     <main className="flex min-h-screen flex-col items-center p-8 bg-gray-900 text-white">
       <div className="w-full max-w-md">
-        {/* ... (Header and main app UI remains the same) ... */}
         <div className="flex justify-between items-center mb-6">
           <div className="text-sm">
             <p>Welcome, {session.user.email || session.user.phone}</p>
@@ -287,7 +221,6 @@ export default function HomePage() {
           </button>
         </div>
         {analysisResult && (
-          // ... (Analysis result UI remains the same) ...
           <div className="mt-10 w-full p-6 bg-gray-800 rounded-lg border border-gray-700">
             <h2 className="text-2xl font-bold mb-4 text-center">Top Career Recommendations</h2>
             {analysisResult.error ? ( <p className="text-center text-red-400">{analysisResult.error}</p> ) : (
@@ -311,7 +244,6 @@ export default function HomePage() {
           </div>
         )}
         {learningPlan && (
-          // ... (Learning Plan section remains the same) ...
           <div className="mt-10 w-full p-6 bg-gray-800 rounded-lg border border-gray-700">
             <h2 className="text-2xl font-bold mb-4 text-center">Your Weekly Learning Plan</h2>
             {learningPlan.error ? ( <p className="text-center text-red-400">{learningPlan.error}</p> ) : (
@@ -334,17 +266,6 @@ export default function HomePage() {
           </div>
         )}
       </div>
-
-      {/* Floating Chatbot Button and Component */}
-      {!isChatOpen && (
-        <button 
-          onClick={() => setIsChatOpen(true)}
-          className="fixed bottom-4 right-4 bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700"
-        >
-          Ask Mentor
-        </button>
-      )}
-      {isChatOpen && <Chatbot userSkills={[...new Set([...(profile?.resume_skills || []), ...(analysisResult?.flatMap(r => r.matched_skills) || [])])]} onClose={() => setIsChatOpen(false)} />}
     </main>
   );
 }
