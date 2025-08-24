@@ -14,7 +14,7 @@ const supabase = createClient(
 
 const BACKEND_URL = "https://proedualt-backend63.onrender.com";
 
-// --- NAYA CHATBOT COMPONENT ---
+// --- CHATBOT COMPONENT ---
 const Chatbot = ({ userSkills, onClose }) => {
   const [messages, setMessages] = useState([
     { text: "Hello! I'm your AI Mentor. Ask me anything about your tech career.", sender: 'ai' }
@@ -105,7 +105,7 @@ export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
-  const [isChatOpen, setIsChatOpen] = useState(false); // Naya state chatbot ke liye
+  const [isChatOpen, setIsChatOpen] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -253,7 +253,11 @@ export default function DashboardPage() {
         </div>
         <div className="space-y-6 text-center">
           <h1 className="text-5xl font-bold">ProEduAlt</h1>
-          <Link href="/jobs" className="text-blue-400 hover:underline">View Job Openings</Link>
+          {/* --- UPDATED LINKS SECTION --- */}
+          <div className="flex justify-center space-x-4">
+            <Link href="/jobs" className="text-blue-400 hover:underline">View Job Openings</Link>
+            <Link href="/interview" className="text-green-400 hover:underline">Practice Mock Interview</Link>
+          </div>
           <p className="text-lg text-gray-400">Your AI-Powered Career Guide</p>
           <div className="p-4 bg-gray-800 rounded-lg border border-gray-700">
             <h3 className="text-lg font-semibold mb-2">Your GitHub Profile</h3>
@@ -330,7 +334,7 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {/* Floating Chatbot Button aur Component */}
+      {/* Floating Chatbot Button and Component */}
       {!isChatOpen && (
         <button 
           onClick={() => setIsChatOpen(true)}
