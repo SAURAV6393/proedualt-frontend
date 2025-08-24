@@ -7,7 +7,8 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
+    // Humne yahan `suppressHydrationWarning` add kiya hai
+    <html lang="en" suppressHydrationWarning>
       <body>{children}</body>
     </html>
   );
