@@ -14,6 +14,69 @@ const supabase = createClient(
 
 const BACKEND_URL = "https://proedualt-backend63.onrender.com";
 
+// --- NAYA CHATBOT COMPONENT ---
+const Chatbot = ({ userSkills, onClose }) => {
+  const [messages, setMessages] = useState([
+    { text: "Hello! I'm your AI Mentor. Ask me anything about your tech career.", sender: 'ai' }
+  ]);
+  const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleSendMessage = async (e) => {
+    e.preventDefault();
+    if (!input.trim()) return;
+
+    const userMessage = { text: input, sender: 'user' };
+    setMessages(prev => [...prev, userMessage]);
+    setInput('');
+    setIsLoading(true);
+
+    try {
+      const response = await fetch(`${BACKEND_URL}/ask-mentor`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question: input, user_skills: userSkills }),
+      });
+      const data = await response.json();
+      const aiMessage = { text: data.answer || "Sorry, I couldn't process that.", sender: 'ai' };
+      setMessages(prev => [...prev, aiMessage]);
+    } catch (error) {
+      const errorMessage = { text: "Sorry, I'm having trouble connecting.", sender: 'ai' };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed bottom-20 right-4 w-96 h-[500px] bg-gray-800 border border-gray-700 rounded-lg shadow-xl flex flex-col z-50">
+      <div className="p-3 bg-gray-700 flex justify-between items-center rounded-t-lg">
+        <h3 className="font-bold text-white">AI Mentor</h3>
+        <button onClick={onClose} className="text-white font-bold text-2xl">&times;</button>
+      </div>
+      <div className="flex-1 p-4 overflow-y-auto">
+        {messages.map((msg, index) => (
+          <div key={index} className={`mb-3 p-3 rounded-lg max-w-xs ${msg.sender === 'ai' ? 'bg-blue-900 text-left' : 'bg-gray-600 text-right ml-auto'}`}>
+            <p className="text-sm whitespace-pre-wrap">{msg.text}</p>
+          </div>
+        ))}
+        {isLoading && <p className="text-sm text-gray-400">AI Mentor is typing...</p>}
+      </div>
+      <form onSubmit={handleSendMessage} className="p-3 border-t border-gray-700 flex">
+        <input
+          type="text"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="Ask a question..."
+          className="flex-1 p-2 bg-gray-700 rounded-l-lg focus:outline-none text-white"
+        />
+        <button type="submit" disabled={isLoading} className="p-2 bg-blue-600 rounded-r-lg font-semibold disabled:bg-gray-500">Send</button>
+      </form>
+    </div>
+  );
+};
+
+
 const SkillsRadarChart = ({ userSkills, requiredSkills }) => {
   const data = requiredSkills.map(skill => ({
     skill: skill, "Your Skills": userSkills.includes(skill) ? 100 : 20, "Required": 100,
@@ -42,6 +105,7 @@ export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
+  const [isChatOpen, setIsChatOpen] = useState(false); // Naya state chatbot ke liye
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -171,7 +235,6 @@ export default function DashboardPage() {
       <main className="flex min-h-screen flex-col items-center justify-center bg-gray-900 p-8">
         <div className="w-full max-w-md bg-gray-800 p-8 rounded-lg shadow-lg">
           <h1 className="text-3xl font-bold text-center mb-4">Welcome to ProEduAlt</h1>
-          <p className="text-center text-gray-400 mb-6">Please sign in to continue to your dashboard.</p>
           <Auth supabaseClient={supabase} appearance={{ theme: ThemeSupa }} providers={['github', 'google']} theme="dark" />
         </div>
       </main>
@@ -266,6 +329,20 @@ export default function DashboardPage() {
           </div>
         )}
       </div>
+
+      {/* Floating Chatbot Button aur Component */}
+      {!isChatOpen && (
+        <button 
+          onClick={() => setIsChatOpen(true)}
+          className="fixed bottom-4 right-4 bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700 flex items-center justify-center h-16 w-16"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" viewBox="0 0 20 20" fill="currentColor">
+            <path d="M2 5a2 2 0 012-2h12a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V5zm3.293 2.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+            <path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zM5 4a1 1 0 011-1h8a1 1 0 110 2H6a1 1 0 01-1-1z" />
+          </svg>
+        </button>
+      )}
+      {isChatOpen && <Chatbot userSkills={[...new Set([...(profile?.resume_skills || []), ...(analysisResult?.flatMap(r => r.matched_skills) || [])])]} onClose={() => setIsChatOpen(false)} />}
     </main>
   );
 }
