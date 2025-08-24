@@ -1,26 +1,42 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* Define a keyframe animation for the moving background */
+@keyframes gradient-animation {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  color: #e2e8f0; /* Light gray text */
+  /* A beautiful, animated gradient background */
+  background: linear-gradient(-45deg, #0f172a, #1e293b, #334155, #475569);
+  background-size: 400% 400%;
+  animation: gradient-animation 15s ease infinite;
+  font-family: 'Inter', sans-serif;
+}
+
+/* Custom utility classes for our new design */
+@layer utilities {
+  /* The "Glass Card" effect */
+  .glass-card {
+    @apply bg-slate-800/50 backdrop-blur-lg border border-slate-700/50 rounded-2xl shadow-2xl transition-all duration-300;
+  }
+  .glass-card:hover {
+    @apply border-slate-600/80;
+    transform: translateY(-4px);
+  }
+
+  /* A cool, animated button */
+  .cool-button {
+    @apply px-6 py-3 font-bold text-white rounded-lg transition-all duration-300 transform;
+  }
+  .cool-button-blue {
+    @apply cool-button bg-blue-600 hover:bg-blue-500 hover:scale-105;
+  }
+  .cool-button-green {
+    @apply cool-button bg-green-600 hover:bg-green-500 hover:scale-105;
+  }
 }

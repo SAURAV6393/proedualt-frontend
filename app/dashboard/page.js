@@ -14,69 +14,6 @@ const supabase = createClient(
 
 const BACKEND_URL = "https://proedualt-backend63.onrender.com";
 
-// --- CHATBOT COMPONENT ---
-const Chatbot = ({ userSkills, onClose }) => {
-  const [messages, setMessages] = useState([
-    { text: "Hello! I'm your AI Mentor. Ask me anything about your tech career.", sender: 'ai' }
-  ]);
-  const [input, setInput] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-
-  const handleSendMessage = async (e) => {
-    e.preventDefault();
-    if (!input.trim()) return;
-
-    const userMessage = { text: input, sender: 'user' };
-    setMessages(prev => [...prev, userMessage]);
-    setInput('');
-    setIsLoading(true);
-
-    try {
-      const response = await fetch(`${BACKEND_URL}/ask-mentor`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question: input, user_skills: userSkills }),
-      });
-      const data = await response.json();
-      const aiMessage = { text: data.answer || "Sorry, I couldn't process that.", sender: 'ai' };
-      setMessages(prev => [...prev, aiMessage]);
-    } catch (error) {
-      const errorMessage = { text: "Sorry, I'm having trouble connecting.", sender: 'ai' };
-      setMessages(prev => [...prev, errorMessage]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  return (
-    <div className="fixed bottom-20 right-4 w-96 h-[500px] bg-gray-800 border border-gray-700 rounded-lg shadow-xl flex flex-col z-50">
-      <div className="p-3 bg-gray-700 flex justify-between items-center rounded-t-lg">
-        <h3 className="font-bold text-white">AI Mentor</h3>
-        <button onClick={onClose} className="text-white font-bold text-2xl">&times;</button>
-      </div>
-      <div className="flex-1 p-4 overflow-y-auto">
-        {messages.map((msg, index) => (
-          <div key={index} className={`mb-3 p-3 rounded-lg max-w-xs ${msg.sender === 'ai' ? 'bg-blue-900 text-left' : 'bg-gray-600 text-right ml-auto'}`}>
-            <p className="text-sm whitespace-pre-wrap">{msg.text}</p>
-          </div>
-        ))}
-        {isLoading && <p className="text-sm text-gray-400">AI Mentor is typing...</p>}
-      </div>
-      <form onSubmit={handleSendMessage} className="p-3 border-t border-gray-700 flex">
-        <input
-          type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Ask a question..."
-          className="flex-1 p-2 bg-gray-700 rounded-l-lg focus:outline-none text-white"
-        />
-        <button type="submit" disabled={isLoading} className="p-2 bg-blue-600 rounded-r-lg font-semibold disabled:bg-gray-500">Send</button>
-      </form>
-    </div>
-  );
-};
-
-
 const SkillsRadarChart = ({ userSkills, requiredSkills }) => {
   const data = requiredSkills.map(skill => ({
     skill: skill, "Your Skills": userSkills.includes(skill) ? 100 : 20, "Required": 100,
@@ -84,12 +21,12 @@ const SkillsRadarChart = ({ userSkills, requiredSkills }) => {
   return (
     <ResponsiveContainer width="100%" height={300}>
       <RadarChart cx="50%" cy="50%" outerRadius="80%" data={data}>
-        <PolarGrid />
-        <PolarAngleAxis dataKey="skill" tick={{ fill: '#fff', fontSize: 12 }} />
-        <Radar name="Your Skills" dataKey="Your Skills" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.6} />
-        <Radar name="Required" dataKey="Required" stroke="#8884d8" fill="#8884d8" fillOpacity={0.2} />
+        <PolarGrid stroke="#475569" />
+        <PolarAngleAxis dataKey="skill" tick={{ fill: '#e2e8f0', fontSize: 12 }} />
+        <Radar name="Your Skills" dataKey="Your Skills" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.7} />
+        <Radar name="Required" dataKey="Required" stroke="#a78bfa" fill="#a78bfa" fillOpacity={0.2} />
         <Legend />
-        <Tooltip />
+        <Tooltip contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155' }} />
       </RadarChart>
     </ResponsiveContainer>
   );
@@ -105,7 +42,6 @@ export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
-  const [isChatOpen, setIsChatOpen] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -232,9 +168,9 @@ export default function DashboardPage() {
 
   if (!session) {
     return (
-      <main className="flex min-h-screen flex-col items-center justify-center bg-gray-900 p-8">
-        <div className="w-full max-w-md bg-gray-800 p-8 rounded-lg shadow-lg">
-          <h1 className="text-3xl font-bold text-center mb-4">Welcome to ProEduAlt</h1>
+      <main className="flex min-h-screen flex-col items-center justify-center p-8">
+        <div className="w-full max-w-md glass-card p-8">
+          <h1 className="text-3xl font-bold text-center mb-4 text-white">Welcome to ProEduAlt</h1>
           <Auth supabaseClient={supabase} appearance={{ theme: ThemeSupa }} providers={['github', 'google']} theme="dark" />
         </div>
       </main>
@@ -242,65 +178,70 @@ export default function DashboardPage() {
   }
 
   return (
-    <main className="flex min-h-screen flex-col items-center p-8 bg-gray-900 text-white">
-      <div className="w-full max-w-md">
-        <div className="flex justify-between items-center mb-6">
+    <main className="min-h-screen p-4 sm:p-8 flex flex-col items-center">
+      <div className="w-full max-w-3xl space-y-8">
+        <header className="flex justify-between items-center glass-card p-4">
           <div className="text-sm">
-            <p>Welcome, {session.user.email || session.user.phone}</p>
-            <p className="font-bold text-yellow-400">Total XP: {profile?.total_xp || 0}</p>
+            <p className="text-slate-300">Welcome, {session.user.email || session.user.phone}</p>
+            <p className="font-bold text-yellow-400 text-base">Total XP: {profile?.total_xp || 0}</p>
           </div>
-          <button onClick={() => supabase.auth.signOut()} className="p-2 rounded-lg bg-red-600 hover:bg-red-700 font-semibold text-sm">Sign Out</button>
+          <button onClick={() => supabase.auth.signOut()} className="px-3 py-2 rounded-lg bg-red-600 hover:bg-red-700 font-semibold text-sm transition-colors">Sign Out</button>
+        </header>
+
+        <div className="text-center">
+          <h1 className="text-5xl md:text-6xl font-bold">ProEduAlt Dashboard</h1>
+          <div className="flex justify-center space-x-6 mt-4">
+            <Link href="/jobs" className="text-blue-400 hover:text-blue-300 transition-colors">View Job Openings</Link>
+            <Link href="/interview" className="text-green-400 hover:text-green-300 transition-colors">Practice Mock Interview</Link>
+          </div>
         </div>
-        <div className="space-y-6 text-center">
-          <h1 className="text-5xl font-bold">ProEduAlt</h1>
-          {/* --- UPDATED LINKS SECTION --- */}
-          <div className="flex justify-center space-x-4">
-            <Link href="/jobs" className="text-blue-400 hover:underline">View Job Openings</Link>
-            <Link href="/interview" className="text-green-400 hover:underline">Practice Mock Interview</Link>
-          </div>
-          <p className="text-lg text-gray-400">Your AI-Powered Career Guide</p>
-          <div className="p-4 bg-gray-800 rounded-lg border border-gray-700">
-            <h3 className="text-lg font-semibold mb-2">Your GitHub Profile</h3>
-            {isEditing || !profile?.github_username ? (
-              <div className="flex items-center space-x-2">
-                <input type="text" placeholder="Enter GitHub username" value={githubUsername} onChange={(e) => setGithubUsername(e.target.value)} className="flex-1 p-2 rounded-lg bg-gray-700 border border-gray-600" />
-                <button onClick={handleProfileUpdate} className="p-2 rounded-lg bg-green-600 hover:bg-green-700">Save</button>
-              </div>
-            ) : (
-              <div className="flex justify-between items-center">
-                <p className="font-mono">{profile.github_username}</p>
-                <button onClick={() => setIsEditing(true)} className="text-sm text-blue-400 hover:underline">Change</button>
-              </div>
-            )}
-          </div>
-          <div className="p-4 bg-gray-800 rounded-lg border border-gray-700">
-            <h3 className="text-lg font-semibold mb-2">Upload Your Resume</h3>
-            <div className="flex items-center space-x-2">
-              <input type="file" accept=".pdf" onChange={(e) => setSelectedFile(e.target.files[0])} className="flex-1 text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
-              <button onClick={handleResumeUpload} disabled={isLoading || !selectedFile} className="p-2 rounded-lg bg-green-600 hover:bg-green-700 disabled:bg-gray-500">
-                {isLoading ? 'Uploading...' : 'Upload'}
-              </button>
+        
+        <div className="grid md:grid-cols-2 gap-6 text-left">
+            <div className="glass-card p-6">
+              <h3 className="text-lg font-semibold mb-3">Your GitHub Profile</h3>
+              {isEditing || !profile?.github_username ? (
+                <div className="flex items-center space-x-2">
+                  <input type="text" placeholder="Enter GitHub username" value={githubUsername} onChange={(e) => setGithubUsername(e.target.value)} className="flex-1 p-2 rounded-lg bg-slate-700 border border-slate-600 focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+                  <button onClick={handleProfileUpdate} className="px-4 py-2 rounded-lg bg-green-600 hover:bg-green-700 transition-colors">Save</button>
+                </div>
+              ) : (
+                <div className="flex justify-between items-center">
+                  <p className="font-mono text-slate-300">{profile.github_username}</p>
+                  <button onClick={() => setIsEditing(true)} className="text-sm text-blue-400 hover:underline">Change</button>
+                </div>
+              )}
             </div>
-            {profile?.resume_skills && <p className="text-xs text-gray-400 mt-2">Resume Skills: {profile.resume_skills.join(', ')}</p>}
-          </div>
-          <button onClick={handleAnalyze} disabled={isLoading || !githubUsername} className="w-full p-3 rounded-lg bg-blue-600 hover:bg-blue-700 font-semibold disabled:bg-gray-500">
-            Analyze Combined Profile
-          </button>
+
+            <div className="glass-card p-6">
+              <h3 className="text-lg font-semibold mb-3">Upload Your Resume</h3>
+              <div className="flex items-center space-x-2">
+                <input type="file" accept=".pdf" onChange={(e) => setSelectedFile(e.target.files[0])} className="flex-1 text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-slate-700 file:text-slate-200 hover:file:bg-slate-600" />
+                <button onClick={handleResumeUpload} disabled={isLoading || !selectedFile} className="px-4 py-2 rounded-lg bg-green-600 hover:bg-green-700 disabled:bg-slate-500 transition-colors">
+                  {isLoading ? '...' : 'Upload'}
+                </button>
+              </div>
+              {profile?.resume_skills && <p className="text-xs text-slate-400 mt-2">Resume Skills: {profile.resume_skills.join(', ')}</p>}
+            </div>
         </div>
+
+        <button onClick={handleAnalyze} disabled={isLoading || !githubUsername} className="w-full cool-button-blue text-lg">
+          {isLoading ? 'Analyzing...' : 'Analyze Combined Profile'}
+        </button>
+
         {analysisResult && (
-          <div className="mt-10 w-full p-6 bg-gray-800 rounded-lg border border-gray-700">
-            <h2 className="text-2xl font-bold mb-4 text-center">Top Career Recommendations</h2>
+          <div className="w-full glass-card p-6">
+            <h2 className="text-3xl font-bold mb-6 text-center">Top Career Recommendations</h2>
             {analysisResult.error ? ( <p className="text-center text-red-400">{analysisResult.error}</p> ) : (
               Array.isArray(analysisResult) && (
-                <ul className="space-y-6">
+                <ul className="space-y-8">
                   {analysisResult.map((rec) => (
-                    <li key={rec.career} className="bg-gray-700 p-4 rounded-md">
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-xl font-bold">{rec.career}</span>
+                    <li key={rec.career} className="bg-slate-800 p-6 rounded-lg">
+                      <div className="flex justify-between items-center mb-4">
+                        <span className="text-2xl font-bold">{rec.career}</span>
                         <span className="text-blue-400 font-bold">{Math.round(rec.score * 10)} Score</span>
                       </div>
                       <SkillsRadarChart userSkills={rec.matched_skills} requiredSkills={rec.all_required_skills} />
-                      <button onClick={() => handleGeneratePlan(rec)} disabled={isLoading} className="mt-3 w-full p-2 text-sm rounded-lg bg-green-600 hover:bg-green-700 disabled:bg-gray-500">
+                      <button onClick={() => handleGeneratePlan(rec)} disabled={isLoading} className="mt-4 w-full cool-button-green">
                         Generate My Learning Plan
                       </button>
                     </li>
@@ -310,16 +251,17 @@ export default function DashboardPage() {
             )}
           </div>
         )}
+        
         {learningPlan && (
-          <div className="mt-10 w-full p-6 bg-gray-800 rounded-lg border border-gray-700">
-            <h2 className="text-2xl font-bold mb-4 text-center">Your Weekly Learning Plan</h2>
+          <div className="w-full glass-card p-6">
+            <h2 className="text-3xl font-bold mb-6 text-center">Your Weekly Learning Plan</h2>
             {learningPlan.error ? ( <p className="text-center text-red-400">{learningPlan.error}</p> ) : (
               Array.isArray(learningPlan.plan) && (
                 <ul className="space-y-3">
                   {learningPlan.plan.map((item) => (
-                    <li key={item.id} className="bg-gray-700 p-3 rounded-md flex items-center justify-between">
+                    <li key={item.id} className="bg-slate-700 p-3 rounded-md flex items-center justify-between hover:bg-slate-600 transition-colors">
                       <div className="flex items-center">
-                        <input type="checkbox" id={`task-${item.id}`} className="mr-3 h-5 w-5 rounded" checked={completedTasks.includes(item.id)} onChange={(e) => handleTaskToggle(item.id, e.target.checked)} />
+                        <input type="checkbox" id={`task-${item.id}`} className="mr-4 h-5 w-5 rounded bg-slate-800 border-slate-600 text-blue-500 focus:ring-blue-500" checked={completedTasks.includes(item.id)} onChange={(e) => handleTaskToggle(item.id, e.target.checked)} />
                         <label htmlFor={`task-${item.id}`} className="flex-1">
                           <a href={item.url} target="_blank" rel="noopener noreferrer" className="font-semibold text-blue-300 hover:underline">{item.title}</a>
                         </label>
@@ -333,20 +275,6 @@ export default function DashboardPage() {
           </div>
         )}
       </div>
-
-      {/* Floating Chatbot Button and Component */}
-      {!isChatOpen && (
-        <button 
-          onClick={() => setIsChatOpen(true)}
-          className="fixed bottom-4 right-4 bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700 flex items-center justify-center h-16 w-16"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" viewBox="0 0 20 20" fill="currentColor">
-            <path d="M2 5a2 2 0 012-2h12a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V5zm3.293 2.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-            <path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zM5 4a1 1 0 011-1h8a1 1 0 110 2H6a1 1 0 01-1-1z" />
-          </svg>
-        </button>
-      )}
-      {isChatOpen && <Chatbot userSkills={[...new Set([...(profile?.resume_skills || []), ...(analysisResult?.flatMap(r => r.matched_skills) || [])])]} onClose={() => setIsChatOpen(false)} />}
     </main>
   );
 }

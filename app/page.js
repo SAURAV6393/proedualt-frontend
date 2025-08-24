@@ -1,18 +1,39 @@
+'use client';
 import Link from 'next/link';
+import { useEffect } from 'react';
+import { createClient } from '@supabase/supabase-js';
+import { useRouter } from 'next/navigation';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+);
 
 export default function LandingPage() {
+  const router = useRouter();
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        router.push('/dashboard');
+      }
+    });
+  }, [router]);
+
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-gray-900 text-white text-center p-8">
-      <div className="space-y-6 max-w-2xl">
-        <h1 className="text-5xl md:text-6xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-green-400">
-          Stop Guessing, Start Growing
+    <main className="flex min-h-screen flex-col items-center justify-center text-center p-8">
+      <div className="space-y-8 max-w-3xl">
+        <h1 className="text-6xl md:text-7xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-green-400 to-teal-400 animate-fade-in-up">
+          Unlock Your Tech Career Path
         </h1>
-        <p className="text-lg md:text-xl text-gray-300">
-          ProEduAlt is an AI-powered platform that analyzes your GitHub profile and resume to provide personalized career recommendations.
+        
+        <p className="text-lg md:text-xl text-slate-300 animate-fade-in-up animation-delay-300">
+          Stop guessing, start growing. ProEduAlt uses AI to analyze your skills and recommends the perfect career for you.
         </p>
-        <div className="flex justify-center">
-          <Link href="/dashboard" className="px-8 py-3 font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">
-            Get Started
+        
+        <div className="animate-fade-in-up animation-delay-600">
+          <Link href="/dashboard" className="cool-button-blue text-lg">
+            Get Started for Free
           </Link>
         </div>
       </div>
