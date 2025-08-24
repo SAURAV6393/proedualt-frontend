@@ -185,7 +185,14 @@ export default function DashboardPage() {
             <p className="text-slate-300">Welcome, {session.user.email || session.user.phone}</p>
             <p className="font-bold text-yellow-400 text-base">Total XP: {profile?.total_xp || 0}</p>
           </div>
-          <button onClick={() => supabase.auth.signOut()} className="px-3 py-2 rounded-lg bg-red-600 hover:bg-red-700 font-semibold text-sm transition-colors">Sign Out</button>
+          <div className="flex items-center space-x-4">
+            <Link href="/settings" className="px-3 py-2 rounded-lg bg-slate-600 hover:bg-slate-500 font-semibold text-sm transition-colors">
+              Settings
+            </Link>
+            <button onClick={() => supabase.auth.signOut()} className="px-3 py-2 rounded-lg bg-red-600 hover:bg-red-700 font-semibold text-sm transition-colors">
+              Sign Out
+            </button>
+          </div>
         </header>
 
         <div className="text-center">
