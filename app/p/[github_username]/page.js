@@ -1,12 +1,8 @@
 'use client';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { createClient } from '@supabase/supabase-js';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-);
+// NOTE: We are NOT using the Supabase client here directly
 
 const BACKEND_URL = "https://proedualt-backend63.onrender.com";
 
@@ -29,28 +25,30 @@ export default function PortfolioPage({ params }) {
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    // We define the async function INSIDE useEffect
+    const fetchPortfolioData = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const response = await fetch(`${BACKEND_URL}/portfolio/${github_username}`);
+        if (!response.ok) {
+          const errData = await response.json();
+          throw new Error(errData.detail || "Profile not found or is not public.");
+        }
+        const data = await response.json();
+        setPortfolioData(data);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
     if (github_username) {
       fetchPortfolioData();
     }
   }, [github_username]);
 
-  async function fetchPortfolioData() {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const response = await fetch(`${BACKEND_URL}/portfolio/${github_username}`);
-      if (!response.ok) {
-        const errData = await response.json();
-        throw new Error(errData.detail || "Profile not found or is not public.");
-      }
-      const data = await response.json();
-      setPortfolioData(data);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setIsLoading(false);
-    }
-  }
 
   if (isLoading) {
     return <main className="min-h-screen flex items-center justify-center p-8 animated-background"><p className="text-white text-xl">Loading Portfolio...</p></main>;
@@ -61,11 +59,11 @@ export default function PortfolioPage({ params }) {
   }
 
   if (!portfolioData) {
-    return null; // Or some other fallback UI
+    return null;
   }
 
   const { profile, projects } = portfolioData;
-  const allSkills = [...new Set([...(profile.resume_skills || []), ...(projects.flatMap(p => p.languages) || [])])];
+  const allSkills = [...new Set([...(profile.resume_skills || []), ...(projects.flatMap(p => p.languages || []).filter(lang => lang))])];
 
 
   return (
@@ -123,7 +121,7 @@ export default function PortfolioPage({ params }) {
                         <p className="text-slate-400 my-2 text-sm">{project.description || "No description available."}</p>
                         <div className="flex flex-wrap gap-2 mt-3">
                             {project.languages.map(lang => (
-                                <span key={lang} className="px-2 py-1 bg-slate-600 text-xs font-semibold rounded-full">{lang}</span>
+                                lang && <span key={lang} className="px-2 py-1 bg-slate-600 text-xs font-semibold rounded-full">{lang}</span>
                             ))}
                         </div>
                     </a>
@@ -135,5 +133,3 @@ export default function PortfolioPage({ params }) {
     </main>
   );
 }
-
-```
